@@ -24,6 +24,7 @@ export default function RegisterPage() {
   >("idle");
   const [errorMsg, setErrorMsg] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const isStudent = form.role === "student";
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -31,6 +32,13 @@ export default function RegisterPage() {
     setErrorMsg("");
 
     const normalizedEmail = form.email.trim().toLowerCase();
+    const trimmedGroup = form.group.trim();
+
+    if (isStudent && !trimmedGroup) {
+      setErrorMsg("Please enter your class or department.");
+      setStatus("error");
+      return;
+    }
 
     try {
       const res = await fetch("/api/people", {
@@ -195,15 +203,27 @@ export default function RegisterPage() {
         <div className="space-y-1.5">
           <label className="text-xs font-semibold text-gray-600 uppercase tracking-wider">
             Class / Department{" "}
-            <span className="text-gray-400 font-normal">(Optional)</span>
+            <span
+              className={`font-normal ${isStudent ? "text-amber-600" : "text-gray-400"}`}
+            >
+              {isStudent ? "Required" : "Optional"}
+            </span>
           </label>
           <input
             type="text"
-            placeholder="e.g., Computer Science B"
+            placeholder={
+              isStudent ? "e.g., Computer Science B" : "e.g., Administration"
+            }
+            required={isStudent}
             value={form.group}
             onChange={(e) => setForm({ ...form, group: e.target.value })}
             className="w-full px-4 py-3 text-sm rounded-xl border border-gray-200 bg-gray-50/50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-gray-900/10 focus:border-gray-900 transition-all"
           />
+          <p className="text-[11px] text-gray-400">
+            {isStudent
+              ? "Students must provide their class or department."
+              : "Staff can leave this blank if they do not want to add a department."}
+          </p>
         </div>
 
         {status === "error" && (

@@ -17,6 +17,9 @@ export default function OfficeDashboard() {
   const role = (session?.user as any)?.role || "Employee";
   const userName = session?.user?.name || "Employee";
   const userEmail = session?.user?.email || "employee@company.com";
+  const userGroup = (session?.user as any)?.group || "";
+  const isStaff = role === "staff";
+  const isStudent = role === "student";
   const userId = (session?.user as any)?.id || "";
 
   // Extract gender selection ("male" or "female")
@@ -41,6 +44,25 @@ export default function OfficeDashboard() {
 
   // DiceBear avatar uses the user's gender in the seed so female accounts get a female-themed avatar.
   const avatarUrl = `https://api.dicebear.com/7.x/adventurer/svg?seed=${avatarSeed}`;
+
+  const hasAnyAttendanceRecord = Boolean(
+    attendance.signInTime || attendance.signOutTime,
+  );
+  const badgeLabel = attendance.signedIn
+    ? "CLOCKED IN"
+    : hasAnyAttendanceRecord
+      ? "CLOCKED OUT"
+      : "NOT SIGNED IN";
+  const badgeTone = attendance.signedIn
+    ? "border-emerald-600 text-emerald-700 bg-emerald-100/60"
+    : hasAnyAttendanceRecord
+      ? "border-rose-600 text-rose-700 bg-rose-100/60"
+      : "border-amber-600 text-amber-700 bg-amber-100/60";
+  const badgeBackground = attendance.signedIn
+    ? "#ecfdf5"
+    : hasAnyAttendanceRecord
+      ? "#fef2f2"
+      : "#fff7ed";
 
   // Perforated stamp masking effect
   const r = 6;
@@ -208,7 +230,7 @@ export default function OfficeDashboard() {
         <div
           className="relative p-6 sm:p-8 shadow-xl shadow-slate-200/50 space-y-6"
           style={{
-            backgroundColor: attendance.signedIn ? "#ecfdf5" : "#fef2f2",
+            backgroundColor: badgeBackground,
             WebkitMask: stampMask,
             mask: stampMask,
             paddingTop: "28px",
@@ -217,34 +239,49 @@ export default function OfficeDashboard() {
         >
           {/* Status Stamp overlay */}
           <div className="absolute top-6 right-6 pointer-events-none select-none">
-            {attendance.signedIn ? (
-              <div className="transform rotate-12 border-4 border-emerald-600 text-emerald-700 font-black text-xs sm:text-sm tracking-widest px-3 py-1.5 rounded-lg uppercase bg-emerald-100/60 shadow-sm animate-pulse">
-                ✓ CLOCKED IN
-              </div>
-            ) : (
-              <div className="transform -rotate-6 border-4 border-rose-600 text-rose-700 font-black text-xs sm:text-sm tracking-widest px-3 py-1.5 rounded-lg uppercase bg-rose-100/60 shadow-sm">
-                CLOCKED OUT
-              </div>
-            )}
+            <div
+              className={`transform ${attendance.signedIn ? "rotate-12" : "-rotate-6"} border-4 font-black text-xs sm:text-sm tracking-widest px-3 py-1.5 rounded-lg uppercase shadow-sm ${badgeTone} ${attendance.signedIn ? "animate-pulse" : ""}`}
+            >
+              {attendance.signedIn ? `✓ ${badgeLabel}` : badgeLabel}
+            </div>
           </div>
 
           <div>
             <span className="text-[10px] font-bold uppercase tracking-widest text-slate-500">
-              Corporate Attendance System
+              Attendance
             </span>
             <h2 className="text-xl font-extrabold text-slate-900 tracking-tight mt-0.5">
-              Digital Employee Badge
+              {isStaff
+                ? "Staff Attendance Badge"
+                : isStudent
+                  ? "Student Attendance Badge"
+                  : "Digital Employee Badge"}
             </h2>
           </div>
 
           {/* Details Card */}
           <div className="p-5 border border-slate-200/80 rounded-2xl bg-white/80 backdrop-blur-sm space-y-3">
             <div className="flex items-center justify-between text-xs border-b border-slate-100 pb-2.5">
+              <span className="text-slate-400 font-medium">Profile Type</span>
+              <span className="font-bold text-slate-800 capitalize bg-slate-100 px-2.5 py-1 rounded-md">
+                {isStaff ? "Staff" : isStudent ? "Student" : role}
+              </span>
+            </div>
+            <div className="flex items-center justify-between text-xs border-b border-slate-100 pb-2.5">
               <span className="text-slate-400 font-medium">
                 Designation / Role
               </span>
               <span className="font-bold text-slate-800 capitalize bg-slate-100 px-2.5 py-1 rounded-md">
                 {role}
+              </span>
+            </div>
+
+            <div className="flex items-center justify-between text-xs border-b border-slate-100 pb-2.5">
+              <span className="text-slate-400 font-medium">
+                Class / Department
+              </span>
+              <span className="font-semibold text-slate-800 text-right max-w-[60%]">
+                {userGroup || "Not provided"}
               </span>
             </div>
 
@@ -281,7 +318,9 @@ export default function OfficeDashboard() {
               className={`w-full py-3.5 px-4 rounded-xl text-sm font-bold tracking-wide transition-all duration-200 flex items-center justify-center gap-2 shadow-md ${
                 attendance.signedIn
                   ? "bg-rose-600 hover:bg-rose-700 text-white shadow-rose-200"
-                  : "bg-emerald-600 hover:bg-emerald-700 text-white shadow-emerald-200"
+                  : hasAnyAttendanceRecord
+                    ? "bg-amber-600 hover:bg-amber-700 text-white shadow-amber-200"
+                    : "bg-emerald-600 hover:bg-emerald-700 text-white shadow-emerald-200"
               }`}
             >
               {actionLoading ? (
@@ -326,7 +365,7 @@ export default function OfficeDashboard() {
         </div>
       </section>
 
-      {/* Office Instructions Panel */}
+      {/* Role-specific guidance */}
       <section className="p-6 border border-slate-200 rounded-3xl bg-white space-y-3">
         <h3 className="text-sm font-extrabold text-slate-900 uppercase tracking-wider flex items-center gap-2">
           <svg
@@ -345,18 +384,53 @@ export default function OfficeDashboard() {
           Office Attendance Guidelines
         </h3>
         <ol className="text-xs text-slate-600 space-y-2 list-decimal list-inside leading-relaxed">
-          <li>
-            Upon arriving at the office, tap <strong>"TAP TO SIGN IN"</strong>{" "}
-            to log your arrival time.
-          </li>
-          <li>
-            Your employee badge will immediately reflect your active{" "}
-            <strong>CLOCKED IN</strong> status.
-          </li>
-          <li>
-            Before leaving for the day, tap <strong>"TAP TO SIGN OUT"</strong>{" "}
-            to record your departure timestamp.
-          </li>
+          {isStaff ? (
+            <>
+              <li>
+                As a staff member, tap <strong>"TAP TO SIGN IN"</strong> when
+                you arrive to log your attendance.
+              </li>
+              <li>
+                Your staff badge will immediately reflect your active{" "}
+                <strong>CLOCKED IN</strong> status.
+              </li>
+              <li>
+                Before leaving, tap <strong>"TAP TO SIGN OUT"</strong> to record
+                your departure time.
+              </li>
+            </>
+          ) : isStudent ? (
+            <>
+              <li>
+                As a student, tap <strong>"TAP TO SIGN IN"</strong> when you
+                arrive for class or campus attendance.
+              </li>
+              <li>
+                Your student badge will immediately show your active{" "}
+                <strong>CLOCKED IN</strong> status.
+              </li>
+              <li>
+                When you leave, tap <strong>"TAP TO SIGN OUT"</strong> to record
+                your departure time.
+              </li>
+            </>
+          ) : (
+            <>
+              <li>
+                Upon arriving at the office, tap{" "}
+                <strong>"TAP TO SIGN IN"</strong> to log your arrival time.
+              </li>
+              <li>
+                Your badge will immediately reflect your active{" "}
+                <strong>CLOCKED IN</strong> status.
+              </li>
+              <li>
+                Before leaving for the day, tap{" "}
+                <strong>"TAP TO SIGN OUT"</strong> to record your departure
+                timestamp.
+              </li>
+            </>
+          )}
         </ol>
       </section>
     </main>

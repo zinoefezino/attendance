@@ -9,6 +9,14 @@ export async function POST(req: Request) {
     const { name, email, password, gender, role, group } = await req.json();
 
     const normalizedEmail = String(email).trim().toLowerCase();
+    const trimmedGroup = String(group || "").trim();
+
+    if (String(role).toLowerCase() === "student" && !trimmedGroup) {
+      return Response.json(
+        { error: "Class or department is required for students." },
+        { status: 400 },
+      );
+    }
 
     const existingPerson = await Person.findOne({ email: normalizedEmail });
 
@@ -27,7 +35,7 @@ export async function POST(req: Request) {
       password: hashedPassword,
       gender,
       role,
-      group: String(group || "").trim(),
+      group: trimmedGroup,
       status: "approved",
     });
 

@@ -19,11 +19,20 @@ interface AttendanceRecord {
   signOutTime?: string;
 }
 
+interface GroupedRecords {
+  students: AttendanceRecord[];
+  staff: AttendanceRecord[];
+}
+
 export default function AdminPage() {
   const router = useRouter();
 
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
   const [records, setRecords] = useState<AttendanceRecord[]>([]);
+  const [groupedRecords, setGroupedRecords] = useState<GroupedRecords>({
+    students: [],
+    staff: [],
+  });
   const [date, setDate] = useState(new Date().toISOString().split("T")[0]);
   const [loadingRecords, setLoadingRecords] = useState(true);
 
@@ -52,7 +61,16 @@ export default function AdminPage() {
       fetch(`/api/attendance?date=${date}`)
         .then((res) => res.json())
         .then((data) => {
-          setRecords(Array.isArray(data) ? data : []);
+          const list = Array.isArray(data) ? data : [];
+          setRecords(list);
+          setGroupedRecords({
+            students: list.filter(
+              (record: AttendanceRecord) => record.person?.role === "student",
+            ),
+            staff: list.filter(
+              (record: AttendanceRecord) => record.person?.role === "staff",
+            ),
+          });
           setLoadingRecords(false);
         })
         .catch(() => setLoadingRecords(false));
@@ -116,39 +134,62 @@ export default function AdminPage() {
             No attendance records found for this date.
           </div>
         ) : (
-          <div className="overflow-x-auto border rounded bg-white shadow-sm">
-            <table className="w-full border-collapse text-left min-w-[500px]">
-              <thead>
-                <tr className="border-b bg-gray-50 text-xs text-gray-500 uppercase tracking-wider">
-                  <th className="p-3">Name</th>
-                  <th className="p-3">Role</th>
-                  <th className="p-3">Sign In</th>
-                  <th className="p-3">Sign Out</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y text-sm">
-                {records.map((r) => (
-                  <tr key={r._id} className="hover:bg-gray-50/50">
-                    <td className="p-3 font-medium text-gray-900">
-                      {r.person?.name || "Unknown"}
-                    </td>
-                    <td className="p-3 text-gray-500 capitalize">
-                      {r.person?.role || "-"}
-                    </td>
-                    <td className="p-3 text-gray-700">
-                      {r.signInTime
-                        ? new Date(r.signInTime).toLocaleTimeString()
-                        : "-"}
-                    </td>
-                    <td className="p-3 text-gray-700">
-                      {r.signOutTime
-                        ? new Date(r.signOutTime).toLocaleTimeString()
-                        : "-"}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          <div className="space-y-6">
+            {[
+              { title: "Students", records: groupedRecords.students },
+              { title: "Staff", records: groupedRecords.staff },
+            ].map((section) => (
+              <section
+                key={section.title}
+                className="border rounded bg-white shadow-sm overflow-hidden"
+              >
+                <div className="bg-gray-50 px-4 py-3 border-b">
+                  <h3 className="text-sm font-semibold text-gray-800">
+                    {section.title}
+                  </h3>
+                </div>
+                {section.records.length === 0 ? (
+                  <div className="p-4 text-sm text-gray-500">
+                    No {section.title.toLowerCase()} records for this date.
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full border-collapse text-left min-w-[500px]">
+                      <thead>
+                        <tr className="border-b bg-gray-50 text-xs text-gray-500 uppercase tracking-wider">
+                          <th className="p-3">Name</th>
+                          <th className="p-3">Role</th>
+                          <th className="p-3">Sign In</th>
+                          <th className="p-3">Sign Out</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y text-sm">
+                        {section.records.map((r) => (
+                          <tr key={r._id} className="hover:bg-gray-50/50">
+                            <td className="p-3 font-medium text-gray-900">
+                              {r.person?.name || "Unknown"}
+                            </td>
+                            <td className="p-3 text-gray-500 capitalize">
+                              {r.person?.role || "-"}
+                            </td>
+                            <td className="p-3 text-gray-700">
+                              {r.signInTime
+                                ? new Date(r.signInTime).toLocaleTimeString()
+                                : "-"}
+                            </td>
+                            <td className="p-3 text-gray-700">
+                              {r.signOutTime
+                                ? new Date(r.signOutTime).toLocaleTimeString()
+                                : "-"}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </section>
+            ))}
           </div>
         )}
       </section>
