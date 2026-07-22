@@ -99,9 +99,7 @@ export default function AdminPage() {
       <div className="flex items-center justify-between border-b pb-4 mb-6">
         <div>
           <h1 className="text-xl sm:text-2xl font-bold">ADMIN</h1>
-          <p className="text-xs text-gray-500">
-            View and monitor daily attendance records
-          </p>
+          <p className="text-xs text-gray-500">View daily attendance records</p>
         </div>
         <div className="flex gap-2">
           <button
@@ -153,40 +151,75 @@ export default function AdminPage() {
                     No {section.title.toLowerCase()} records for this date.
                   </div>
                 ) : (
-                  <div className="overflow-x-auto">
-                    <table className="w-full border-collapse text-left min-w-[500px]">
-                      <thead>
-                        <tr className="border-b bg-gray-50 text-xs text-gray-500 uppercase tracking-wider">
-                          <th className="p-3">Name</th>
-                          <th className="p-3">Role</th>
-                          <th className="p-3">Sign In</th>
-                          <th className="p-3">Sign Out</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y text-sm">
-                        {section.records.map((r) => (
-                          <tr key={r._id} className="hover:bg-gray-50/50">
-                            <td className="p-3 font-medium text-gray-900">
+                  <>
+                    {/* Desktop: table view */}
+                    <div className="hidden sm:block">
+                      <table className="w-full border-collapse text-left">
+                        <thead>
+                          <tr className="border-b bg-gray-50 text-xs text-gray-500 uppercase tracking-wider">
+                            <th className="p-3">Name</th>
+                            <th className="p-3">Role</th>
+                            <th className="p-3">Sign In</th>
+                            <th className="p-3">Sign Out</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y text-sm">
+                          {section.records.map((r) => (
+                            <tr key={r._id} className="hover:bg-gray-50/50">
+                              <td className="p-3 font-medium text-gray-900">
+                                {r.person?.name || "Unknown"}
+                              </td>
+                              <td className="p-3 text-gray-500 capitalize">
+                                {r.person?.role || "-"}
+                              </td>
+                              <td className="p-3 text-gray-700">
+                                {r.signInTime
+                                  ? new Date(r.signInTime).toLocaleTimeString()
+                                  : "-"}
+                              </td>
+                              <td className="p-3 text-gray-700">
+                                {r.signOutTime
+                                  ? new Date(r.signOutTime).toLocaleTimeString()
+                                  : "-"}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+
+                    {/* Mobile: card view */}
+                    <div className="sm:hidden divide-y divide-gray-100">
+                      {section.records.map((r) => (
+                        <div key={r._id} className="p-3 space-y-1.5">
+                          <div className="flex items-center justify-between">
+                            <span className="font-semibold text-gray-900 text-sm">
                               {r.person?.name || "Unknown"}
-                            </td>
-                            <td className="p-3 text-gray-500 capitalize">
+                            </span>
+                            <span className="text-xs text-gray-500 capitalize bg-gray-100 px-2 py-0.5 rounded">
                               {r.person?.role || "-"}
-                            </td>
-                            <td className="p-3 text-gray-700">
+                            </span>
+                          </div>
+                          <div className="flex items-center justify-between text-xs text-gray-500">
+                            <span>Sign In</span>
+                            <span className="font-medium text-gray-700">
                               {r.signInTime
                                 ? new Date(r.signInTime).toLocaleTimeString()
                                 : "-"}
-                            </td>
-                            <td className="p-3 text-gray-700">
+                            </span>
+                          </div>
+                          <div className="flex items-center justify-between text-xs text-gray-500">
+                            <span>Sign Out</span>
+                            <span className="font-medium text-gray-700">
                               {r.signOutTime
                                 ? new Date(r.signOutTime).toLocaleTimeString()
                                 : "-"}
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
+                            </span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </>
                 )}
               </section>
             ))}
