@@ -248,14 +248,14 @@ export default function OfficeDashboard() {
 
           <div>
             <span className="text-[10px] font-bold uppercase tracking-widest text-slate-500">
-              Attendance
+              Sign in
             </span>
             <h2 className="text-xl font-extrabold text-slate-900 tracking-tight mt-0.5">
               {isStaff
-                ? "Staff Attendance Badge"
+                ? "Staff Attendance"
                 : isStudent
-                  ? "Student Attendance Badge"
-                  : "Digital Employee Badge"}
+                  ? "Student Attendance"
+                  : "Staff Attendance"}
             </h2>
           </div>
 
