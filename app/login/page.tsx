@@ -5,7 +5,11 @@ import { signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { HugeiconsIcon } from "@hugeicons/react";
-import { ViewIcon, ViewOffIcon } from "@hugeicons/core-free-icons";
+import {
+  ViewIcon,
+  ViewOffIcon,
+  Loading03Icon,
+} from "@hugeicons/core-free-icons";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
@@ -27,17 +31,16 @@ export default function LoginPage() {
         redirect: false,
       });
 
-      setLoading(false);
-
       if (res?.error) {
         setError("Invalid email or password.");
+        setLoading(false);
       } else {
         router.replace("/");
         router.refresh();
       }
     } catch {
-      setLoading(false);
       setError("An unexpected error occurred. Please try again.");
+      setLoading(false);
     }
   }
 
@@ -55,7 +58,10 @@ export default function LoginPage() {
 
       {/* Error alert banner */}
       {error && (
-        <div className="mb-6 p-3.5 rounded-xl bg-red-50 border border-red-100 text-red-600 text-xs font-medium">
+        <div
+          role="alert"
+          className="mb-6 p-3.5 rounded-xl bg-red-50 border border-red-100 text-red-600 text-xs font-medium"
+        >
           {error}
         </div>
       )}
@@ -63,37 +69,50 @@ export default function LoginPage() {
       <form onSubmit={handleSubmit} className="flex flex-col gap-5">
         {/* Email Input */}
         <div className="space-y-1.5">
-          <label className="text-xs font-semibold text-gray-600 uppercase tracking-wider">
+          <label
+            htmlFor="email"
+            className="text-xs font-semibold text-gray-600 uppercase tracking-wider"
+          >
             Email Address
           </label>
           <input
+            id="email"
             type="email"
             placeholder="john@example.com"
             required
+            autoComplete="email"
+            disabled={loading}
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            className="w-full px-4 py-3 text-base rounded-xl border border-gray-200 bg-gray-50/50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-gray-900/10 focus:border-gray-900 transition-all"
+            className="w-full px-4 py-3 text-base rounded-xl border border-gray-200 bg-gray-50/50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-gray-900/10 focus:border-gray-900 transition-all disabled:opacity-60"
           />
         </div>
 
         {/* Password Input */}
         <div className="space-y-1.5">
-          <label className="text-xs font-semibold text-gray-600 uppercase tracking-wider">
+          <label
+            htmlFor="password"
+            className="text-xs font-semibold text-gray-600 uppercase tracking-wider"
+          >
             Password
           </label>
           <div className="relative">
             <input
+              id="password"
               type={showPassword ? "text" : "password"}
               placeholder="••••••••"
               required
+              autoComplete="current-password"
+              disabled={loading}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full px-4 py-3 pr-12 text-base rounded-xl border border-gray-200 bg-gray-50/50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-gray-900/10 focus:border-gray-900 transition-all"
+              className="w-full px-4 py-3 pr-12 text-base rounded-xl border border-gray-200 bg-gray-50/50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-gray-900/10 focus:border-gray-900 transition-all disabled:opacity-60"
             />
             <button
               type="button"
               onClick={() => setShowPassword((prev) => !prev)}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
+              disabled={loading}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700 disabled:opacity-60"
               aria-label={showPassword ? "Hide password" : "Show password"}
             >
               <HugeiconsIcon
@@ -109,9 +128,16 @@ export default function LoginPage() {
         <button
           type="submit"
           disabled={loading}
-          className="mt-2 py-3.5 px-6 rounded-xl font-semibold text-white text-sm shadow-md hover:shadow-lg transition-all active:scale-[0.99] disabled:opacity-50 disabled:cursor-not-allowed"
+          className="mt-2 flex items-center justify-center gap-2 py-3.5 px-6 rounded-xl font-semibold text-white text-sm shadow-md hover:shadow-lg transition-all active:scale-[0.99] disabled:opacity-50 disabled:cursor-not-allowed"
           style={{ backgroundColor: "var(--color-primary, #111827)" }}
         >
+          {loading && (
+            <HugeiconsIcon
+              icon={Loading03Icon}
+              size={16}
+              className="animate-spin"
+            />
+          )}
           {loading ? "Signing in..." : "Log In"}
         </button>
         <div className="flex justify-center">
@@ -126,7 +152,7 @@ export default function LoginPage() {
 
       {/* Footer link */}
       <p className="text-center text-xs text-gray-500 mt-8">
-        Don't have an account?{" "}
+        Don&apos;t have an account?{" "}
         <Link
           href="/register"
           className="font-semibold text-gray-900 hover:underline transition-all"

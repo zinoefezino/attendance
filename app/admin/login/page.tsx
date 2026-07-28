@@ -3,7 +3,11 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { HugeiconsIcon } from "@hugeicons/react";
-import { ViewIcon, ViewOffIcon } from "@hugeicons/core-free-icons";
+import {
+  ViewIcon,
+  ViewOffIcon,
+  Loading03Icon,
+} from "@hugeicons/core-free-icons";
 
 export default function AdminLoginPage() {
   const [password, setPassword] = useState("");
@@ -30,10 +34,10 @@ export default function AdminLoginPage() {
       } else {
         const data = await res.json();
         setError(data.error || "Incorrect administrative password.");
+        setLoading(false);
       }
     } catch {
       setError("An unexpected error occurred. Please try again.");
-    } finally {
       setLoading(false);
     }
   }
@@ -67,12 +71,14 @@ export default function AdminLoginPage() {
               required
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full px-4 py-3 pr-12 text-base rounded-xl border border-gray-200 bg-gray-50/50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-gray-900/10 focus:border-gray-900 transition-all"
+              disabled={loading}
+              className="w-full px-4 py-3 pr-12 text-base rounded-xl border border-gray-200 bg-gray-50/50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-gray-900/10 focus:border-gray-900 transition-all disabled:opacity-60"
             />
             <button
               type="button"
               onClick={() => setShowPassword((prev) => !prev)}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
+              disabled={loading}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700 disabled:opacity-60"
               aria-label={showPassword ? "Hide password" : "Show password"}
             >
               <HugeiconsIcon
@@ -87,9 +93,16 @@ export default function AdminLoginPage() {
         <button
           type="submit"
           disabled={loading}
-          className="mt-2 py-3.5 px-6 rounded-xl font-semibold text-white text-sm shadow-md hover:shadow-lg transition-all active:scale-[0.99] disabled:opacity-50 disabled:cursor-not-allowed"
+          className="mt-2 flex items-center justify-center gap-2 py-3.5 px-6 rounded-xl font-semibold text-white text-sm shadow-md hover:shadow-lg transition-all active:scale-[0.99] disabled:opacity-50 disabled:cursor-not-allowed"
           style={{ backgroundColor: "var(--color-primary, #111827)" }}
         >
+          {loading && (
+            <HugeiconsIcon
+              icon={Loading03Icon}
+              size={16}
+              className="animate-spin"
+            />
+          )}
           {loading ? "Authenticating..." : "Login"}
         </button>
       </form>

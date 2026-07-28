@@ -5,7 +5,13 @@ import { signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { HugeiconsIcon } from "@hugeicons/react";
-import { ViewIcon, ViewOffIcon } from "@hugeicons/core-free-icons";
+import {
+  ViewIcon,
+  ViewOffIcon,
+  Loading03Icon,
+} from "@hugeicons/core-free-icons";
+
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -25,14 +31,27 @@ export default function RegisterPage() {
   const [errorMsg, setErrorMsg] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const isStudent = form.role === "student";
+  const loading = status === "submitting";
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    setStatus("submitting");
     setErrorMsg("");
 
     const normalizedEmail = form.email.trim().toLowerCase();
+    const trimmedName = form.name.trim();
     const trimmedGroup = form.group.trim();
+
+    if (!EMAIL_REGEX.test(normalizedEmail)) {
+      setErrorMsg("Please enter a valid email address.");
+      setStatus("error");
+      return;
+    }
+
+    if (form.password.length < 8) {
+      setErrorMsg("Password must be at least 8 characters.");
+      setStatus("error");
+      return;
+    }
 
     if (isStudent && !trimmedGroup) {
       setErrorMsg("Please enter your class or department.");
@@ -40,42 +59,42 @@ export default function RegisterPage() {
       return;
     }
 
+    setStatus("submitting");
+
     try {
       const res = await fetch("/api/people", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           ...form,
-          name: form.name.trim(),
+          name: trimmedName,
           email: normalizedEmail,
-          group: form.group.trim(),
+          group: trimmedGroup,
         }),
       });
 
       const data = await res.json();
 
-      if (res.ok) {
-        setStatus("done");
-
-        const normalizedEmail = form.email.trim().toLowerCase();
-
-        const loginRes = await signIn("credentials", {
-          email: normalizedEmail,
-          password: form.password,
-          redirect: false,
-        });
-
-        if (loginRes?.error) {
-          router.replace("/login");
-          return;
-        }
-
-        router.replace("/");
-        router.refresh();
-      } else {
+      if (!res.ok) {
         setErrorMsg(data.error || "Something went wrong. Please try again.");
         setStatus("error");
+        return;
       }
+
+      const loginRes = await signIn("credentials", {
+        email: normalizedEmail,
+        password: form.password,
+        redirect: false,
+      });
+
+      if (loginRes?.error) {
+        router.replace("/login");
+        return;
+      }
+
+      setStatus("done");
+      router.replace("/");
+      router.refresh();
     } catch {
       setErrorMsg("A network error occurred. Please try again.");
       setStatus("error");
@@ -115,50 +134,70 @@ export default function RegisterPage() {
 
       <form onSubmit={handleSubmit} className="flex flex-col gap-5">
         <div className="space-y-1.5">
-          <label className="text-xs font-semibold text-gray-600 uppercase tracking-wider">
+          <label
+            htmlFor="name"
+            className="text-xs font-semibold text-gray-600 uppercase tracking-wider"
+          >
             Full Name
           </label>
           <input
+            id="name"
             type="text"
             placeholder="John Doe"
             required
+            autoComplete="name"
+            disabled={loading}
             value={form.name}
             onChange={(e) => setForm({ ...form, name: e.target.value })}
-            className="w-full px-4 py-3 text-base rounded-xl border border-gray-200 bg-gray-50/50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-gray-900/10 focus:border-gray-900 transition-all"
+            className="w-full px-4 py-3 text-base rounded-xl border border-gray-200 bg-gray-50/50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-gray-900/10 focus:border-gray-900 transition-all disabled:opacity-60"
           />
         </div>
 
         <div className="space-y-1.5">
-          <label className="text-xs font-semibold text-gray-600 uppercase tracking-wider">
+          <label
+            htmlFor="email"
+            className="text-xs font-semibold text-gray-600 uppercase tracking-wider"
+          >
             Email Address
           </label>
           <input
+            id="email"
             type="email"
             placeholder="john@example.com"
             required
+            autoComplete="email"
+            disabled={loading}
             value={form.email}
             onChange={(e) => setForm({ ...form, email: e.target.value })}
-            className="w-full px-4 py-3 text-base rounded-xl border border-gray-200 bg-gray-50/50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-gray-900/10 focus:border-gray-900 transition-all"
+            className="w-full px-4 py-3 text-base rounded-xl border border-gray-200 bg-gray-50/50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-gray-900/10 focus:border-gray-900 transition-all disabled:opacity-60"
           />
         </div>
 
         <div className="space-y-1.5">
-          <label className="text-xs font-semibold text-gray-600 uppercase tracking-wider">
+          <label
+            htmlFor="password"
+            className="text-xs font-semibold text-gray-600 uppercase tracking-wider"
+          >
             Password
           </label>
           <div className="relative">
             <input
+              id="password"
               type={showPassword ? "text" : "password"}
-              placeholder="••••••••"
+              placeholder="At least 8 characters"
               required
+              minLength={8}
+              autoComplete="new-password"
+              disabled={loading}
               value={form.password}
               onChange={(e) => setForm({ ...form, password: e.target.value })}
-              className="w-full px-4 py-3 pr-12 text-base rounded-xl border border-gray-200 bg-gray-50/50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-gray-900/10 focus:border-gray-900 transition-all"
+              className="w-full px-4 py-3 pr-12 text-base rounded-xl border border-gray-200 bg-gray-50/50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-gray-900/10 focus:border-gray-900 transition-all disabled:opacity-60"
             />
             <button
               type="button"
               onClick={() => setShowPassword((prev) => !prev)}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
+              disabled={loading}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700 disabled:opacity-60"
               aria-label={showPassword ? "Hide password" : "Show password"}
             >
               <HugeiconsIcon
@@ -172,13 +211,18 @@ export default function RegisterPage() {
 
         <div className="grid grid-cols-2 gap-4">
           <div className="space-y-1.5">
-            <label className="text-xs font-semibold text-gray-600 uppercase tracking-wider">
+            <label
+              htmlFor="gender"
+              className="text-xs font-semibold text-gray-600 uppercase tracking-wider"
+            >
               Gender
             </label>
             <select
+              id="gender"
+              disabled={loading}
               value={form.gender}
               onChange={(e) => setForm({ ...form, gender: e.target.value })}
-              className="w-full px-3.5 py-3 text-sm rounded-xl border border-gray-200 bg-gray-50/50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-gray-900/10 focus:border-gray-900 transition-all cursor-pointer"
+              className="w-full px-3.5 py-3 text-sm rounded-xl border border-gray-200 bg-gray-50/50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-gray-900/10 focus:border-gray-900 transition-all cursor-pointer disabled:opacity-60"
             >
               <option value="male">Male</option>
               <option value="female">Female</option>
@@ -186,13 +230,18 @@ export default function RegisterPage() {
           </div>
 
           <div className="space-y-1.5">
-            <label className="text-xs font-semibold text-gray-600 uppercase tracking-wider">
+            <label
+              htmlFor="role"
+              className="text-xs font-semibold text-gray-600 uppercase tracking-wider"
+            >
               Role
             </label>
             <select
+              id="role"
+              disabled={loading}
               value={form.role}
               onChange={(e) => setForm({ ...form, role: e.target.value })}
-              className="w-full px-3.5 py-3 text-sm rounded-xl border border-gray-200 bg-gray-50/50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-gray-900/10 focus:border-gray-900 transition-all cursor-pointer"
+              className="w-full px-3.5 py-3 text-sm rounded-xl border border-gray-200 bg-gray-50/50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-gray-900/10 focus:border-gray-900 transition-all cursor-pointer disabled:opacity-60"
             >
               <option value="student">Student</option>
               <option value="staff">Staff</option>
@@ -201,7 +250,10 @@ export default function RegisterPage() {
         </div>
 
         <div className="space-y-1.5">
-          <label className="text-xs font-semibold text-gray-600 uppercase tracking-wider">
+          <label
+            htmlFor="group"
+            className="text-xs font-semibold text-gray-600 uppercase tracking-wider"
+          >
             Class / Department{" "}
             <span
               className={`font-normal ${isStudent ? "text-amber-600" : "text-gray-400"}`}
@@ -210,14 +262,16 @@ export default function RegisterPage() {
             </span>
           </label>
           <input
+            id="group"
             type="text"
             placeholder={
               isStudent ? "e.g., Computer Science B" : "e.g., Administration"
             }
             required={isStudent}
+            disabled={loading}
             value={form.group}
             onChange={(e) => setForm({ ...form, group: e.target.value })}
-            className="w-full px-4 py-3 text-base rounded-xl border border-gray-200 bg-gray-50/50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-gray-900/10 focus:border-gray-900 transition-all"
+            className="w-full px-4 py-3 text-base rounded-xl border border-gray-200 bg-gray-50/50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-gray-900/10 focus:border-gray-900 transition-all disabled:opacity-60"
           />
           <p className="text-[11px] text-gray-400">
             {isStudent
@@ -227,18 +281,28 @@ export default function RegisterPage() {
         </div>
 
         {status === "error" && (
-          <div className="p-3.5 rounded-xl bg-red-50 border border-red-100 text-red-600 text-xs font-medium">
+          <div
+            role="alert"
+            className="p-3.5 rounded-xl bg-red-50 border border-red-100 text-red-600 text-xs font-medium"
+          >
             {errorMsg}
           </div>
         )}
 
         <button
           type="submit"
-          disabled={status === "submitting"}
-          className="mt-2 py-3.5 px-6 rounded-xl font-semibold text-white text-sm shadow-md hover:shadow-lg transition-all active:scale-[0.99] disabled:opacity-50 disabled:cursor-not-allowed"
+          disabled={loading}
+          className="mt-2 flex items-center justify-center gap-2 py-3.5 px-6 rounded-xl font-semibold text-white text-sm shadow-md hover:shadow-lg transition-all active:scale-[0.99] disabled:opacity-50 disabled:cursor-not-allowed"
           style={{ backgroundColor: "var(--color-primary, #111827)" }}
         >
-          {status === "submitting" ? "Creating Account..." : "Register"}
+          {loading && (
+            <HugeiconsIcon
+              icon={Loading03Icon}
+              size={16}
+              className="animate-spin"
+            />
+          )}
+          {loading ? "Creating Account..." : "Register"}
         </button>
 
         <p className="text-center text-xs text-gray-500 mt-2">

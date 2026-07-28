@@ -5,14 +5,16 @@ export interface IAttendanceRecord extends Document {
   date: string;
   signInTime?: Date;
   signOutTime?: Date;
+  isLate?: boolean;
 }
 
 const AttendanceRecordSchema = new Schema<IAttendanceRecord>(
   {
     person: { type: Schema.Types.ObjectId, ref: "Person", required: true },
-    date: { type: String, required: true }, // "YYYY-MM-DD"
+    date: { type: String, required: true },
     signInTime: { type: Date },
     signOutTime: { type: Date },
+    isLate: { type: Boolean, default: false },
   },
   { timestamps: true },
 );
