@@ -128,7 +128,7 @@ function ResetPasswordForm() {
               disabled={formDisabled}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full px-4 py-3 pr-12 text-sm rounded-xl border border-gray-200 bg-gray-50/50 focus:outline-none focus:ring-2 focus:ring-gray-900/10 transition-all disabled:opacity-60"
+              className="w-full px-4 py-3 pr-12 text-base rounded-xl border border-gray-200 bg-gray-50/50 focus:outline-none focus:ring-2 focus:ring-gray-900/10 transition-all disabled:opacity-60"
             />
             <button
               type="button"
@@ -162,7 +162,7 @@ function ResetPasswordForm() {
             disabled={formDisabled}
             value={confirmPassword}
             onChange={(e) => setConfirmPassword(e.target.value)}
-            className="w-full px-4 py-3 text-sm rounded-xl border border-gray-200 bg-gray-50/50 focus:outline-none focus:ring-2 focus:ring-gray-900/10 transition-all disabled:opacity-60"
+            className="w-full px-4 py-3 text-base rounded-xl border border-gray-200 bg-gray-50/50 focus:outline-none focus:ring-2 focus:ring-gray-900/10 transition-all disabled:opacity-60"
           />
           {confirmPassword.length > 0 && confirmPassword !== password && (
             <p className="text-[11px] text-red-500">
