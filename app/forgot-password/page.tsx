@@ -2,6 +2,10 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { HugeiconsIcon } from "@hugeicons/react";
+import { Loading03Icon } from "@hugeicons/core-free-icons";
+
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState("");
@@ -9,9 +13,18 @@ export default function ForgotPasswordPage() {
     "idle",
   );
   const [message, setMessage] = useState("");
+  const loading = status === "loading";
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+
+    const normalizedEmail = email.trim().toLowerCase();
+    if (!EMAIL_REGEX.test(normalizedEmail)) {
+      setStatus("error");
+      setMessage("Please enter a valid email address.");
+      return;
+    }
+
     setStatus("loading");
     setMessage("");
 
@@ -19,7 +32,7 @@ export default function ForgotPasswordPage() {
       const res = await fetch("/api/auth/forgot-password", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email }),
+        body: JSON.stringify({ email: normalizedEmail }),
       });
 
       const data = await res.json();
@@ -46,7 +59,7 @@ export default function ForgotPasswordPage() {
           Forgot password
         </h1>
         <p className="text-xs text-gray-400 mt-1">
-          Enter your email and we’ll send a reset link.
+          Enter your email and we&apos;ll send a reset link.
         </p>
       </div>
 
@@ -54,7 +67,11 @@ export default function ForgotPasswordPage() {
         <div
           role="status"
           aria-live="polite"
-          className={`mb-6 p-3.5 rounded-xl border text-xs font-medium ${status === "error" ? "bg-red-50 border-red-100 text-red-600" : "bg-emerald-50 border-emerald-100 text-emerald-600"}`}
+          className={`mb-6 p-3.5 rounded-xl border text-xs font-medium ${
+            status === "error"
+              ? "bg-red-50 border-red-100 text-red-600"
+              : "bg-emerald-50 border-emerald-100 text-emerald-600"
+          }`}
         >
           <div className="flex items-start gap-2">
             <span className="mt-0.5 text-sm">
@@ -74,25 +91,43 @@ export default function ForgotPasswordPage() {
 
       <form onSubmit={handleSubmit} className="flex flex-col gap-5">
         <div className="space-y-1.5">
-          <label className="text-xs font-semibold text-gray-600 uppercase tracking-wider">
+          <label
+            htmlFor="email"
+            className="text-xs font-semibold text-gray-600 uppercase tracking-wider"
+          >
             Email Address
           </label>
           <input
+            id="email"
             type="email"
+            placeholder="john@example.com"
             required
+            autoComplete="email"
+            disabled={loading || status === "done"}
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            className="w-full px-4 py-3 text-sm rounded-xl border border-gray-200 bg-gray-50/50 focus:outline-none focus:ring-2 focus:ring-gray-900/10 transition-all"
+            className="w-full px-4 py-3 text-base rounded-xl border border-gray-200 bg-gray-50/50 focus:outline-none focus:ring-2 focus:ring-gray-900/10 transition-all disabled:opacity-60"
           />
         </div>
 
         <button
           type="submit"
-          disabled={status === "loading"}
-          className="mt-2 py-3.5 px-6 rounded-xl font-semibold text-white text-sm shadow-md hover:shadow-lg transition-all active:scale-[0.99] disabled:opacity-50 disabled:cursor-not-allowed"
+          disabled={loading || status === "done"}
+          className="mt-2 flex items-center justify-center gap-2 py-3.5 px-6 rounded-xl font-semibold text-white text-sm shadow-md hover:shadow-lg transition-all active:scale-[0.99] disabled:opacity-50 disabled:cursor-not-allowed"
           style={{ backgroundColor: "var(--color-primary, #111827)" }}
         >
-          {status === "loading" ? "Sending..." : "Send reset link"}
+          {loading && (
+            <HugeiconsIcon
+              icon={Loading03Icon}
+              size={16}
+              className="animate-spin"
+            />
+          )}
+          {loading
+            ? "Sending..."
+            : status === "done"
+              ? "Link sent"
+              : "Send reset link"}
         </button>
       </form>
 
