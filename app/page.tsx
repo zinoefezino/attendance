@@ -29,6 +29,11 @@ interface RawAttendanceRecord {
   isLate?: boolean;
 }
 
+function isOfficeLocked(): boolean {
+  const hour = new Date().getHours();
+  return hour >= 18 || hour < 6;
+}
+
 export default function OfficeDashboard() {
   const { data: session, status } = useSession();
   const router = useRouter();
@@ -54,6 +59,7 @@ export default function OfficeDashboard() {
   const [loggingOut, setLoggingOut] = useState(false);
   const [confirmingSignOut, setConfirmingSignOut] = useState(false);
   const [errorModal, setErrorModal] = useState<string | null>(null);
+  const [officeLocked, setOfficeLocked] = useState(false);
 
   const hasRecordToday = Boolean(
     attendance.signInTime || attendance.signOutTime,
@@ -77,6 +83,13 @@ export default function OfficeDashboard() {
   useEffect(() => {
     if (status === "unauthenticated") router.push("/login");
   }, [status, router]);
+
+  useEffect(() => {
+    const check = () => setOfficeLocked(isOfficeLocked());
+    check();
+    const interval = setInterval(check, 60_000);
+    return () => clearInterval(interval);
+  }, []);
 
   useEffect(() => {
     if (status !== "authenticated" || !userId) return;
@@ -123,6 +136,10 @@ export default function OfficeDashboard() {
           signOutTime: data?.signOutTime,
           isLate: data?.isLate,
         });
+      } else if (res.status === 403) {
+        // Office is closed. The button already prevents this in the normal
+        // case, so just resync the lock state instead of showing a modal.
+        setOfficeLocked(true);
       } else {
         setErrorModal(data.error || "Action failed. Please try again.");
       }
@@ -151,6 +168,11 @@ export default function OfficeDashboard() {
   }
 
   if (!session) return null;
+
+  const signInDisabled =
+    actionLoading ||
+    (hasRecordToday && !attendance.signedIn) ||
+    (officeLocked && !attendance.signedIn);
 
   return (
     <main className="max-w-md mx-auto w-full p-4 sm:p-6 space-y-5">
@@ -193,7 +215,7 @@ export default function OfficeDashboard() {
         </Modal>
       )}
 
-      {/* Error modal */}
+      {/* Error modal — genuine errors only (network/server failures) */}
       {errorModal && (
         <Modal onClose={() => setErrorModal(null)}>
           <h3 className="text-base font-bold text-slate-900">
@@ -292,7 +314,7 @@ export default function OfficeDashboard() {
 
         <button
           onClick={handleToggle}
-          disabled={actionLoading || (hasRecordToday && !attendance.signedIn)}
+          disabled={signInDisabled}
           className="mt-5 flex w-full items-center justify-center gap-2 rounded-xl py-3.5 text-sm font-bold text-white shadow-sm transition-transform active:scale-[0.98] disabled:opacity-50 disabled:active:scale-100"
           style={{
             backgroundColor: attendance.signedIn
@@ -313,8 +335,16 @@ export default function OfficeDashboard() {
               ? "Tap to sign out"
               : hasRecordToday
                 ? "Done for today"
-                : "Tap to sign in"}
+                : officeLocked
+                  ? "Office closed until 6:00 AM"
+                  : "Tap to sign in"}
         </button>
+
+        {officeLocked && !attendance.signedIn && !hasRecordToday && (
+          <p className="mt-3 text-center text-xs text-slate-400">
+            Sign-in is closed overnight and reopens at 6:00 AM.
+          </p>
+        )}
       </section>
 
       {/* Guidance */}
@@ -325,12 +355,12 @@ export default function OfficeDashboard() {
         <ol className="mt-3 space-y-2 text-xs leading-relaxed text-slate-500">
           <li>
             1. Tap <strong className="text-slate-700">Sign in</strong> when you
-            arrive.
+            arrive at the office.
           </li>
           <li>2. Your status updates immediately above.</li>
           <li>
             3. Tap <strong className="text-slate-700">Sign out</strong> before
-            you leave.
+            you leave the office.
           </li>
         </ol>
         {userGroup && (
