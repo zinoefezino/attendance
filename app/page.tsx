@@ -363,6 +363,10 @@ export default function OfficeDashboard() {
             you leave the office.
           </li>
         </ol>
+        <p className="mt-3 rounded-lg bg-amber-50 px-3 py-2 text-[11px] leading-relaxed text-amber-700">
+          <strong>NOTE: </strong> Only sign in and out when you&apos;re actually
+          entering or leaving the office as you can only do each once per day.
+        </p>
         {userGroup && (
           <p className="mt-4 border-t border-slate-100 pt-3 text-xs text-slate-400">
             {isStaff ? "Department" : "Class"}:{" "}
