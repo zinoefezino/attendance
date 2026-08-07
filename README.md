@@ -1,36 +1,100 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Lite-Intel Attendance
 
-## Getting Started
+A kiosk-based sign-in/sign-out attendance system for students and staff, built for a single shared device at the office/school entrance.
 
-First, run the development server:
+## How it works
+
+- One shared laptop/tablet sits at the entrance, running the sign-in page (`/`) in the browser.
+- Students and staff each tap their name from a role-filtered list (Students / Staff tabs).
+- **Signing in** requires entering a personal PIN code (issued once by an admin).
+- **Signing out** requires no code — just tap your name again.
+- Each person can sign in and out once per day.
+- Sign-in is blocked from **6:00 PM to 6:00 AM** (office hours only).
+- Signing in after **9:10 AM** is automatically flagged as **Late**.
+
+There are no personal user accounts — nobody logs in individually. The kiosk device itself is the proof of presence, since it never leaves the building.
+
+## Roles
+
+- **Admin** — manages the roster (add people, generate codes) and views attendance records. Protected by a separate password-gated `/admin` login.
+- **Students / Staff** — no login. Just a name + a permanent PIN, used only at sign-in.
+
+## Tech stack
+
+- **Framework:** Next.js (App Router, TypeScript, no `src/` directory)
+- **Database:** MongoDB via Mongoose
+- **Icons:** Hugeicons (`@hugeicons/react`)
+- **Styling:** Tailwind CSS
+- **Package manager:** pnpm
+- **Deployment:** Vercel
+
+## Branding
+
+- Primary color: Lite-Intel orange `#f54800`
+- Supporting colors: white and black
+
+## Project structure
+
+attendance-app/
+├── middleware.ts # protects /admin routes with a password-gated session cookie
+├── .env.local
+├── app/
+│ ├── page.tsx # kiosk sign-in/sign-out page (public)
+│ ├── layout.tsx
+│ ├── globals.css
+│ ├── admin/
+│ │ ├── page.tsx # admin dashboard (people, codes, attendance records)
+│ │ └── login/page.tsx # admin password login
+│ └── api/
+│ ├── people/
+│ │ └── route.ts # GET roster, POST add person (generates code)
+│ ├── attendance/
+│ │ └── route.ts # GET records (by date or range), POST sign in/out
+│ └── admin/
+│ ├── login/route.ts
+│ ├── logout/route.ts
+│ └── check-auth/route.ts
+├── components/
+│ ├── Header.tsx
+│ ├── AddPersonForm.tsx # admin: add a person, generates their PIN
+│ └── PeopleList.tsx # admin: look up anyone's PIN if they lose it
+├── lib/
+│ ├── db.ts # MongoDB connection
+│ ├── adminAuth.ts # admin session token helper
+│ └── timeUtils.ts # office-hours time logic (Africa/Lagos timezone)
+└── models/
+├── Person.ts # name, role, group, code
+└── AttendanceRecord.ts # person, date, signInTime, signOutTime, isLate
+
+## Getting started
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
+pnpm install
 pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Visit `http://localhost:3000` for the kiosk sign-in screen, and `http://localhost:3000/admin` for the admin dashboard (password-protected).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Admin workflow
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+1. Log in at `/admin` with `ADMIN_PASSWORD`.
+2. Use **Add Person** to register a student or staff member — this generates a permanent 6-digit PIN, shown once on screen.
+3. Give the PIN to that person directly (write it down, tell them in person).
+4. If someone loses their PIN, look it up again anytime in the **People & Codes** list.
+5. View attendance by day or by week, with presets (Today / Yesterday / This Week), search by name, and status pills showing who's currently signed in, signed out, or late.
 
-## Learn More
+## Sign-in rules
 
-To learn more about Next.js, take a look at the following resources:
+| Rule             | Behavior                                        |
+| ---------------- | ----------------------------------------------- |
+| Office hours     | Sign-in allowed 6:00 AM – 6:00 PM               |
+| Outside hours    | Sign-in blocked, sign-out still allowed         |
+| Late threshold   | Sign-in after 9:10 AM flagged as "Late"         |
+| Frequency        | One sign-in and one sign-out per person per day |
+| Code requirement | Required for sign-in, not required for sign-out |
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Roadmap / not yet built
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- Export attendance reports (PDF/Excel)
+- Per-person attendance streaks/stats
+- Multiple kiosk devices (e.g. one per classroom)

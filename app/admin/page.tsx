@@ -13,12 +13,13 @@ import {
   ArrowRight01Icon,
   InformationCircleIcon,
 } from "@hugeicons/core-free-icons";
+import AddPersonForm from "@/components/AddPersonForm";
+import PeopleList from "@/components/PeopleList";
 
 interface Person {
   _id: string;
   name: string;
-  email: string;
-  role: "student" | "staff" | "admin";
+  role: "student" | "staff";
   group?: string;
 }
 
@@ -69,6 +70,7 @@ export default function AdminPage() {
   const [loadingRecords, setLoadingRecords] = useState(true);
   const [loggingOut, setLoggingOut] = useState(false);
   const [search, setSearch] = useState("");
+  const [peopleRefreshKey, setPeopleRefreshKey] = useState(0);
 
   useEffect(() => {
     async function checkAdminAuth() {
@@ -149,12 +151,10 @@ export default function AdminPage() {
       <div className="flex min-h-[50vh] flex-col items-center justify-center gap-2">
         <HugeiconsIcon
           icon={Loading03Icon}
-          size={20}
-          className="animate-spin text-slate-700"
+          size={24}
+          className="animate-spin text-gray-700"
         />
-        <p className="text-xs font-medium text-slate-500">
-          Verifying access...
-        </p>
+        <p className="text-xs font-medium text-gray-500">Verifying access...</p>
       </div>
     );
   }
@@ -165,21 +165,21 @@ export default function AdminPage() {
       <div className="mb-6 flex items-center justify-between border-b pb-4">
         <div>
           <h1 className="text-xl font-bold sm:text-2xl">Admin</h1>
-          <p className="text-xs text-slate-500">Attendance records</p>
+          <p className="text-xs text-gray-500">Attendance records</p>
         </div>
         <button
           onClick={handleLogout}
           disabled={loggingOut}
-          className="flex items-center gap-1.5 rounded-lg border border-red-200 bg-red-50 px-3 py-1.5 text-xs font-semibold text-red-600 hover:bg-red-100 disabled:opacity-60"
+          className="flex items-center gap-1.5 rounded-lg border border-red-200 bg-white px-3 py-1.5 text-xs font-semibold text-red-600 hover:bg-red-50 disabled:opacity-60"
         >
           {loggingOut ? (
             <HugeiconsIcon
               icon={Loading03Icon}
-              size={14}
+              size={18}
               className="animate-spin"
             />
           ) : (
-            <HugeiconsIcon icon={Logout03Icon} size={14} />
+            <HugeiconsIcon icon={Logout03Icon} size={18} />
           )}
           {loggingOut ? "Logging out..." : "Logout"}
         </button>
@@ -193,6 +193,12 @@ export default function AdminPage() {
       </div>
 
       <AdminGuide />
+
+      {/* People management */}
+      <div className="mb-6 grid gap-4 sm:grid-cols-2">
+        <AddPersonForm onAdded={() => setPeopleRefreshKey((k) => k + 1)} />
+        <PeopleList refreshKey={peopleRefreshKey} />
+      </div>
 
       {/* Presets */}
       <div className="mb-3 flex flex-wrap gap-2">
@@ -215,15 +221,13 @@ export default function AdminPage() {
 
       {/* View toggle + navigation */}
       <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex items-center gap-1 rounded-lg border bg-slate-50 p-1 text-sm">
+        <div className="flex items-center gap-1 rounded-lg border bg-white p-1 text-sm">
           <button
             onClick={() => setViewMode("day")}
             className="rounded px-3 py-1.5 font-medium transition-colors"
             style={{
-              backgroundColor: viewMode === "day" ? "#fff" : "transparent",
+              backgroundColor: viewMode === "day" ? "#f3f4f6" : "transparent",
               color: viewMode === "day" ? "#0f172a" : "#64748b",
-              boxShadow:
-                viewMode === "day" ? "0 1px 2px rgba(0,0,0,0.06)" : "none",
             }}
           >
             Day
@@ -232,10 +236,8 @@ export default function AdminPage() {
             onClick={() => setViewMode("week")}
             className="rounded px-3 py-1.5 font-medium transition-colors"
             style={{
-              backgroundColor: viewMode === "week" ? "#fff" : "transparent",
+              backgroundColor: viewMode === "week" ? "#f3f4f6" : "transparent",
               color: viewMode === "week" ? "#0f172a" : "#64748b",
-              boxShadow:
-                viewMode === "week" ? "0 1px 2px rgba(0,0,0,0.06)" : "none",
             }}
           >
             Week
@@ -256,7 +258,7 @@ export default function AdminPage() {
         ) : (
           <div className="flex items-center gap-2">
             <IconButton onClick={() => stepWeek(-1)} icon={ArrowLeft01Icon} />
-            <span className="whitespace-nowrap rounded border bg-white px-3 py-2 text-sm font-medium text-slate-700">
+            <span className="whitespace-nowrap rounded border bg-white px-3 py-2 text-sm font-medium text-gray-700">
               {formatDay(weekStart)} – {formatDay(addDays(weekStart, 6))}
             </span>
             <IconButton onClick={() => stepWeek(1)} icon={ArrowRight01Icon} />
@@ -269,15 +271,15 @@ export default function AdminPage() {
         <div className="relative flex-1">
           <HugeiconsIcon
             icon={SearchList01Icon}
-            size={16}
-            className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400"
+            size={20}
+            className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400"
           />
           <input
             type="text"
             placeholder="Search name..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full rounded border bg-white py-2 pl-8 pr-3 text-sm"
+            className="w-full rounded border bg-white py-2 pl-9 pr-3 text-sm"
           />
         </div>
         <IconButton
@@ -292,19 +294,19 @@ export default function AdminPage() {
         <div className="flex flex-col items-center justify-center gap-2 rounded border bg-white p-10">
           <HugeiconsIcon
             icon={Loading03Icon}
-            size={20}
-            className="animate-spin text-slate-400"
+            size={24}
+            className="animate-spin text-gray-400"
           />
-          <p className="text-xs text-slate-400">Fetching records...</p>
+          <p className="text-xs text-gray-400">Fetching records...</p>
         </div>
       ) : filteredRecords.length === 0 ? (
-        <div className="flex flex-col items-center justify-center gap-2 rounded border bg-slate-50 p-10 text-center">
+        <div className="flex flex-col items-center justify-center gap-2 rounded border bg-white p-10 text-center">
           <HugeiconsIcon
             icon={UserGroupIcon}
-            size={22}
-            className="text-slate-300"
+            size={28}
+            className="text-gray-300"
           />
-          <p className="text-sm text-slate-500">No attendance records found.</p>
+          <p className="text-sm text-gray-500">No attendance records found.</p>
         </div>
       ) : viewMode === "day" ? (
         <RoleSections records={filteredRecords} />
@@ -318,14 +320,14 @@ export default function AdminPage() {
                 open={dayRecords.length > 0}
                 className="overflow-hidden rounded border bg-white shadow-sm"
               >
-                <summary className="flex cursor-pointer items-center justify-between bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-800">
+                <summary className="flex cursor-pointer items-center justify-between bg-white px-4 py-3 text-sm font-semibold text-gray-800">
                   <span>{formatDay(d)}</span>
-                  <span className="rounded-full bg-white px-2 py-0.5 text-xs font-medium text-slate-500">
+                  <span className="rounded-full border px-2 py-0.5 text-xs font-medium text-gray-500">
                     {dayRecords.length}
                   </span>
                 </summary>
                 {dayRecords.length === 0 ? (
-                  <div className="p-4 text-sm text-slate-500">
+                  <div className="p-4 text-sm text-gray-500">
                     No records for this day.
                   </div>
                 ) : (
@@ -344,47 +346,53 @@ export default function AdminPage() {
 
 function AdminGuide() {
   return (
-    <details className="mb-6 overflow-hidden rounded-xl border border-slate-200 bg-slate-50">
-      <summary className="flex cursor-pointer items-center gap-2 px-4 py-3 text-sm font-semibold text-slate-700">
+    <details className="mb-6 overflow-hidden rounded-xl border border-gray-200 bg-white">
+      <summary className="flex cursor-pointer items-center gap-2 px-4 py-3 text-sm font-semibold text-gray-700">
         <HugeiconsIcon
           icon={InformationCircleIcon}
-          size={16}
-          className="text-slate-500"
+          size={20}
+          className="text-gray-500"
         />
         How to use this page
       </summary>
-      <div className="border-t border-slate-200 bg-white px-4 py-4 text-xs leading-relaxed text-slate-600">
+      <div className="border-t border-gray-200 bg-white px-4 py-4 text-xs leading-relaxed text-gray-600">
         <ul className="space-y-2">
           <li>
-            <strong className="text-slate-800">Presets</strong> — Today,
+            <strong className="text-gray-800">Presets</strong> — Today,
             Yesterday, or This Week jump straight to that date range without
             using the calendar.
           </li>
           <li>
-            <strong className="text-slate-800">Day / Week toggle</strong> — Day
+            <strong className="text-gray-800">Day / Week toggle</strong> — Day
             shows one date at a time. Week shows all 7 days, each collapsible —
             days with no records stay collapsed automatically.
           </li>
           <li>
-            <strong className="text-slate-800">Arrows</strong> — step backward
-            or forward one day (Day view) or one week (Week view) at a time.
+            <strong className="text-gray-800">Arrows</strong> — step backward or
+            forward one day (Day view) or one week (Week view) at a time.
           </li>
           <li>
-            <strong className="text-slate-800">Search</strong> — filters the
+            <strong className="text-gray-800">Search</strong> — filters the
             currently loaded records by name. It doesn&apos;t search other
             dates.
           </li>
           <li>
-            <strong className="text-slate-800">Refresh</strong> — reloads
-            records for the current view without changing the date.
+            <strong className="text-gray-800">Refresh</strong> — reloads records
+            for the current view without changing the date.
           </li>
           <li>
-            <strong className="text-slate-800">Status pill</strong> —{" "}
+            <strong className="text-gray-800">Add Person</strong> — generates a
+            permanent sign-in code (PIN). Give it to them directly — it&apos;s
+            also visible any time in the People &amp; Codes list if they lose
+            it.
+          </li>
+          <li>
+            <strong className="text-gray-800">Status pill</strong> —{" "}
             <span className="font-semibold" style={{ color: "#f54800" }}>
               In
             </span>{" "}
             means signed in but not out yet,{" "}
-            <span className="font-semibold text-slate-600">Out</span> means done
+            <span className="font-semibold text-gray-600">Out</span> means done
             for the day, and a red{" "}
             <span className="font-semibold text-red-600">Late</span> tag means
             they signed in after 9:10 AM.
@@ -420,11 +428,11 @@ function RoleSections({
               flat ? "" : "overflow-hidden rounded border bg-white shadow-sm"
             }
           >
-            <div className="flex items-center justify-between border-b bg-slate-50 px-4 py-2">
-              <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-600">
+            <div className="flex items-center justify-between border-b bg-white px-4 py-2">
+              <h3 className="text-xs font-semibold uppercase tracking-wide text-gray-600">
                 {section.title}
               </h3>
-              <span className="text-xs text-slate-400">
+              <span className="text-xs text-gray-400">
                 {section.records.length}
               </span>
             </div>
@@ -432,7 +440,7 @@ function RoleSections({
             <div className="hidden sm:block">
               <table className="w-full border-collapse text-left">
                 <thead>
-                  <tr className="border-b bg-slate-50 text-xs uppercase tracking-wider text-slate-500">
+                  <tr className="border-b bg-white text-xs uppercase tracking-wider text-gray-500">
                     <th className="p-3">Name</th>
                     <th className="p-3">Status</th>
                     <th className="p-3">Sign In</th>
@@ -441,19 +449,19 @@ function RoleSections({
                 </thead>
                 <tbody className="divide-y text-sm">
                   {section.records.map((r) => (
-                    <tr key={r._id} className="hover:bg-slate-50/60">
-                      <td className="p-3 font-medium text-slate-900">
+                    <tr key={r._id} className="hover:bg-gray-50/60">
+                      <td className="p-3 font-medium text-gray-900">
                         {r.person?.name || "Unknown"}
                       </td>
                       <td className="p-3">
                         <StatusPill record={r} />
                       </td>
-                      <td className="p-3 text-slate-700">
+                      <td className="p-3 text-gray-700">
                         {r.signInTime
                           ? new Date(r.signInTime).toLocaleTimeString()
                           : "-"}
                       </td>
-                      <td className="p-3 text-slate-700">
+                      <td className="p-3 text-gray-700">
                         {r.signOutTime
                           ? new Date(r.signOutTime).toLocaleTimeString()
                           : "-"}
@@ -464,26 +472,26 @@ function RoleSections({
               </table>
             </div>
 
-            <div className="divide-y divide-slate-100 sm:hidden">
+            <div className="divide-y divide-gray-100 sm:hidden">
               {section.records.map((r) => (
                 <div key={r._id} className="space-y-1.5 p-3">
                   <div className="flex items-center justify-between">
-                    <span className="text-sm font-semibold text-slate-900">
+                    <span className="text-sm font-semibold text-gray-900">
                       {r.person?.name || "Unknown"}
                     </span>
                     <StatusPill record={r} />
                   </div>
-                  <div className="flex items-center justify-between text-xs text-slate-500">
+                  <div className="flex items-center justify-between text-xs text-gray-500">
                     <span>Sign In</span>
-                    <span className="font-medium text-slate-700">
+                    <span className="font-medium text-gray-700">
                       {r.signInTime
                         ? new Date(r.signInTime).toLocaleTimeString()
                         : "-"}
                     </span>
                   </div>
-                  <div className="flex items-center justify-between text-xs text-slate-500">
+                  <div className="flex items-center justify-between text-xs text-gray-500">
                     <span>Sign Out</span>
-                    <span className="font-medium text-slate-700">
+                    <span className="font-medium text-gray-700">
                       {r.signOutTime
                         ? new Date(r.signOutTime).toLocaleTimeString()
                         : "-"}
@@ -513,7 +521,7 @@ function StatCard({
       <p className="text-xl font-bold" style={{ color: tone || "#0f172a" }}>
         {value}
       </p>
-      <p className="mt-0.5 text-[11px] font-medium text-slate-400">{label}</p>
+      <p className="mt-0.5 text-[11px] font-medium text-gray-400">{label}</p>
     </div>
   );
 }
@@ -559,7 +567,7 @@ function PresetButton({
       onClick={onClick}
       className="rounded-full px-3 py-1.5 text-xs font-semibold transition-colors"
       style={{
-        backgroundColor: active ? "var(--color-primary)" : "#f1f5f9",
+        backgroundColor: active ? "var(--color-primary)" : "#f3f4f6",
         color: active ? "#fff" : "#475569",
       }}
     >
@@ -580,11 +588,11 @@ function IconButton({
   return (
     <button
       onClick={onClick}
-      className="flex items-center justify-center rounded border bg-white p-2 text-slate-600 hover:bg-slate-50"
+      className="flex items-center justify-center rounded border bg-white p-2 text-gray-600 hover:bg-gray-50"
     >
       <HugeiconsIcon
         icon={icon}
-        size={16}
+        size={20}
         className={spin ? "animate-spin" : ""}
       />
     </button>

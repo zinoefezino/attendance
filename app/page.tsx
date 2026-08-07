@@ -1,436 +1,334 @@
 "use client";
 
-import { useSession, signOut } from "next-auth/react";
-import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useEffect, useRef, useState } from "react";
 import { HugeiconsIcon } from "@hugeicons/react";
-import { Loading03Icon, Logout03Icon } from "@hugeicons/core-free-icons";
+import {
+  Loading03Icon,
+  InformationCircleIcon,
+} from "@hugeicons/core-free-icons";
 
-interface SessionUser {
-  id: string;
-  name?: string | null;
-  email?: string | null;
-  role?: "staff" | "student";
-  group?: string;
-  gender?: string;
+interface Person {
+  _id: string;
+  name: string;
+  role: "student" | "staff";
 }
 
-interface AttendanceStatus {
-  signedIn: boolean;
+interface AttendanceRecord {
+  _id: string;
+  person: string;
   signInTime?: string;
   signOutTime?: string;
-  isLate?: boolean;
 }
 
 interface RawAttendanceRecord {
-  person?: { _id: string };
+  _id: string;
+  person: { _id: string } | string;
   signInTime?: string;
   signOutTime?: string;
-  isLate?: boolean;
 }
 
-function isOfficeLocked(): boolean {
-  const hour = new Date().getHours();
-  return hour >= 18 || hour < 6;
+function initials(name: string) {
+  return name
+    .split(" ")
+    .map((n) => n[0])
+    .slice(0, 2)
+    .join("")
+    .toUpperCase();
 }
 
-export default function OfficeDashboard() {
-  const { data: session, status } = useSession();
-  const router = useRouter();
+export default function KioskSignInPage() {
+  const [people, setPeople] = useState<Person[]>([]);
+  const [records, setRecords] = useState<Record<string, AttendanceRecord>>({});
+  const [tab, setTab] = useState<"student" | "staff">("student");
+  const [message, setMessage] = useState("");
+  const [isError, setIsError] = useState(false);
 
-  const user = session?.user as SessionUser | undefined;
-  const role = user?.role || "staff";
-  const userName = user?.name || "Employee";
-  const userEmail = user?.email || "employee@company.com";
-  const userGroup = user?.group || "";
-  const userId = user?.id || "";
-  const isStaff = role === "staff";
-
-  const userGender =
-    user?.gender?.toLowerCase() === "female" ? "female" : "male";
-  const avatarSeed = `${userGender}-${encodeURIComponent(userName)}`;
-  const avatarUrl = `https://api.dicebear.com/7.x/adventurer/svg?seed=${avatarSeed}`;
-
-  const [attendance, setAttendance] = useState<AttendanceStatus>({
-    signedIn: false,
-  });
-  const [loadingData, setLoadingData] = useState(true);
-  const [actionLoading, setActionLoading] = useState(false);
-  const [loggingOut, setLoggingOut] = useState(false);
-  const [confirmingSignOut, setConfirmingSignOut] = useState(false);
-  const [errorModal, setErrorModal] = useState<string | null>(null);
-  const [officeLocked, setOfficeLocked] = useState(false);
-
-  const hasRecordToday = Boolean(
-    attendance.signInTime || attendance.signOutTime,
-  );
-  const statusLabel = attendance.signedIn
-    ? "Clocked in"
-    : hasRecordToday
-      ? "Clocked out"
-      : "Not signed in";
-
-  const statusStyles = attendance.signedIn
-    ? { bg: "#ecfdf5", border: "#059669", text: "#047857" }
-    : hasRecordToday
-      ? { bg: "#f8fafc", border: "#94a3b8", text: "#475569" }
-      : {
-          bg: "#fff7ed",
-          border: "var(--color-primary)",
-          text: "var(--color-primary)",
-        };
+  const [pinTarget, setPinTarget] = useState<Person | null>(null);
+  const [pin, setPin] = useState("");
+  const [pinLoading, setPinLoading] = useState(false);
+  const [pinError, setPinError] = useState("");
+  const pinInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    if (status === "unauthenticated") router.push("/login");
-  }, [status, router]);
-
-  useEffect(() => {
-    const check = () => setOfficeLocked(isOfficeLocked());
-    check();
-    const interval = setInterval(check, 60_000);
+    loadPeople();
+    loadRecords();
+    const interval = setInterval(loadRecords, 30_000);
     return () => clearInterval(interval);
   }, []);
 
   useEffect(() => {
-    if (status !== "authenticated" || !userId) return;
+    if (pinTarget) pinInputRef.current?.focus();
+  }, [pinTarget]);
 
-    fetch(`/api/attendance?date=${new Date().toISOString().split("T")[0]}`)
-      .then((res) => {
-        if (!res.ok) throw new Error("Failed to load attendance");
-        return res.json();
-      })
+  function loadPeople() {
+    fetch("/api/people")
+      .then((res) => res.json())
+      .then(setPeople);
+  }
+
+  function loadRecords() {
+    fetch("/api/attendance")
+      .then((res) => res.json())
       .then((data: RawAttendanceRecord[]) => {
-        const todayRecord = Array.isArray(data)
-          ? data.find((r) => r.person?._id === userId)
-          : undefined;
-
-        setAttendance({
-          signedIn: Boolean(
-            todayRecord?.signInTime && !todayRecord?.signOutTime,
-          ),
-          signInTime: todayRecord?.signInTime,
-          signOutTime: todayRecord?.signOutTime,
-          isLate: todayRecord?.isLate,
+        const map: Record<string, AttendanceRecord> = {};
+        data.forEach((r) => {
+          const personId =
+            typeof r.person === "string" ? r.person : r.person._id;
+          map[personId] = { ...r, person: personId };
         });
-      })
-      .catch(() =>
-        setErrorModal("Couldn't load today's attendance. Try refreshing."),
-      )
-      .finally(() => setLoadingData(false));
-  }, [status, userId]);
-
-  async function submitAttendanceAction(action: "signin" | "signout") {
-    setActionLoading(true);
-    try {
-      const res = await fetch("/api/attendance", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ personId: userId, action }),
+        setRecords(map);
       });
-      const data = await res.json();
+  }
 
-      if (res.ok) {
-        setAttendance({
-          signedIn: Boolean(data?.signInTime && !data?.signOutTime),
-          signInTime: data?.signInTime,
-          signOutTime: data?.signOutTime,
-          isLate: data?.isLate,
-        });
-      } else if (res.status === 403) {
-        // Office is closed. The button already prevents this in the normal
-        // case, so just resync the lock state instead of showing a modal.
-        setOfficeLocked(true);
-      } else {
-        setErrorModal(data.error || "Action failed. Please try again.");
-      }
-    } catch {
-      setErrorModal("An error occurred while updating attendance.");
-    } finally {
-      setActionLoading(false);
+  function flash(text: string, error = false) {
+    setIsError(error);
+    setMessage(text);
+    setTimeout(() => setMessage(""), 2200);
+  }
+
+  function openTap(person: Person) {
+    const record = records[person._id];
+
+    if (!record) {
+      setPinTarget(person);
+      setPin("");
+      setPinError("");
+      return;
+    }
+
+    if (!record.signOutTime) {
+      submitSignOut(person);
     }
   }
 
-  function handleToggle() {
-    if (attendance.signedIn) {
-      setConfirmingSignOut(true);
+  async function submitSignOut(person: Person) {
+    const res = await fetch("/api/attendance", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ personId: person._id, action: "signout" }),
+    });
+    const data = await res.json();
+    flash(res.ok ? `${person.name} signed out` : data.error, !res.ok);
+    if (res.ok) loadRecords();
+  }
+
+  async function submitPin() {
+    if (!pinTarget) return;
+    setPinLoading(true);
+    setPinError("");
+
+    const res = await fetch("/api/attendance", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        personId: pinTarget._id,
+        action: "signin",
+        code: pin,
+      }),
+    });
+    const data = await res.json();
+
+    setPinLoading(false);
+
+    if (res.ok) {
+      flash(`${pinTarget.name} signed in`);
+      setPinTarget(null);
+      loadRecords();
     } else {
-      submitAttendanceAction("signin");
+      setPinError(data.error || "Incorrect code");
+      setPin("");
+      pinInputRef.current?.focus();
     }
   }
 
-  async function handleLogout() {
-    setLoggingOut(true);
-    await signOut({ callbackUrl: "/" });
-  }
-
-  if (status === "loading" || (status === "authenticated" && loadingData)) {
-    return <DashboardSkeleton />;
-  }
-
-  if (!session) return null;
-
-  const signInDisabled =
-    actionLoading ||
-    (hasRecordToday && !attendance.signedIn) ||
-    (officeLocked && !attendance.signedIn);
+  const filtered = people.filter((p) => p.role === tab);
 
   return (
-    <main className="max-w-md mx-auto w-full p-4 sm:p-6 space-y-5">
-      {/* Sign-out confirmation */}
-      {confirmingSignOut && (
-        <Modal onClose={() => setConfirmingSignOut(false)}>
-          <h3 className="text-base font-bold text-slate-900">
-            Sign out for today?
-          </h3>
-          <p className="mt-1.5 text-sm text-slate-500">
-            This records your departure time. You can&apos;t sign back in until
-            tomorrow.
-          </p>
-          <div className="mt-5 flex gap-2">
-            <button
-              onClick={() => setConfirmingSignOut(false)}
-              className="flex-1 rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50"
-            >
-              Cancel
-            </button>
-            <button
-              onClick={() => {
-                setConfirmingSignOut(false);
-                submitAttendanceAction("signout");
-              }}
-              disabled={actionLoading}
-              className="flex flex-1 items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-50"
+    <main className="mx-auto flex min-h-screen max-w-5xl flex-col p-4 sm:p-8">
+      {/* PIN modal */}
+      {pinTarget && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4"
+          onClick={() => setPinTarget(null)}
+        >
+          <div
+            className="w-full max-w-sm rounded-3xl bg-white p-8 shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div
+              className="mx-auto flex h-16 w-16 items-center justify-center rounded-full text-xl font-bold text-white"
               style={{ backgroundColor: "var(--color-primary)" }}
             >
-              {actionLoading && (
-                <HugeiconsIcon
-                  icon={Loading03Icon}
-                  size={16}
-                  className="animate-spin"
-                />
-              )}
-              {actionLoading ? "Signing out..." : "Sign out"}
-            </button>
-          </div>
-        </Modal>
-      )}
-
-      {/* Error modal — genuine errors only (network/server failures) */}
-      {errorModal && (
-        <Modal onClose={() => setErrorModal(null)}>
-          <h3 className="text-base font-bold text-slate-900">
-            Something went wrong
-          </h3>
-          <p className="mt-1.5 text-sm text-slate-500">{errorModal}</p>
-          <button
-            onClick={() => setErrorModal(null)}
-            className="mt-5 w-full rounded-xl px-4 py-2.5 text-sm font-semibold text-white"
-            style={{ backgroundColor: "var(--color-primary)" }}
-          >
-            OK
-          </button>
-        </Modal>
-      )}
-
-      {/* Profile header */}
-      <section className="flex items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-        <div className="flex items-center gap-3 min-w-0">
-          <img
-            src={avatarUrl}
-            alt=""
-            className="h-11 w-11 shrink-0 rounded-xl border border-slate-200 bg-slate-50 object-cover"
-          />
-          <div className="min-w-0">
-            <h1 className="truncate text-sm font-bold text-slate-900">
-              {userName}
-            </h1>
-            <p className="truncate text-xs text-slate-400">{userEmail}</p>
-          </div>
-        </div>
-        <button
-          onClick={handleLogout}
-          disabled={loggingOut}
-          className="flex shrink-0 items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-semibold text-slate-500 hover:bg-slate-50 disabled:opacity-60"
-        >
-          {loggingOut ? (
-            <HugeiconsIcon
-              icon={Loading03Icon}
-              size={14}
-              className="animate-spin"
-            />
-          ) : (
-            <HugeiconsIcon icon={Logout03Icon} size={14} />
-          )}
-          {loggingOut ? "Logging out..." : "Log out"}
-        </button>
-      </section>
-
-      {/* Status card */}
-      <section
-        className="rounded-2xl border p-5 shadow-sm transition-colors"
-        style={{
-          backgroundColor: statusStyles.bg,
-          borderColor: statusStyles.border,
-        }}
-      >
-        <div className="flex items-center justify-between">
-          <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-            {isStaff ? "Staff attendance" : "Student attendance"}
-          </span>
-          <span
-            className="rounded-full border px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide"
-            style={{
-              borderColor: statusStyles.border,
-              color: statusStyles.text,
-            }}
-          >
-            {statusLabel}
-          </span>
-        </div>
-
-        <div className="mt-4 grid grid-cols-2 gap-3">
-          <div className="rounded-xl bg-white/70 p-3">
-            <div className="flex items-center justify-between">
-              <p className="text-[11px] font-medium text-slate-400">
-                Signed in
-              </p>
-              {attendance.isLate && (
-                <span className="rounded-full bg-red-100 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-red-600">
-                  Late
-                </span>
-              )}
+              {initials(pinTarget.name)}
             </div>
-            <p className="mt-0.5 text-sm font-bold text-slate-800">
-              {attendance.signInTime
-                ? new Date(attendance.signInTime).toLocaleTimeString([], {
-                    hour: "2-digit",
-                    minute: "2-digit",
-                  })
-                : "—"}
+            <h3 className="mt-4 text-center text-lg font-bold text-gray-900">
+              {pinTarget.name}
+            </h3>
+            <p className="mt-1 text-center text-sm text-gray-500">
+              Enter your sign-in code
             </p>
-          </div>
-          <TimeStat label="Signed out" value={attendance.signOutTime} />
-        </div>
 
+            <input
+              ref={pinInputRef}
+              type="tel"
+              inputMode="numeric"
+              maxLength={6}
+              value={pin}
+              onChange={(e) => setPin(e.target.value.replace(/\D/g, ""))}
+              onKeyDown={(e) =>
+                e.key === "Enter" && pin.length >= 4 && submitPin()
+              }
+              className="mt-6 w-full rounded-2xl border-2 border-gray-200 px-4 py-4 text-center text-3xl font-bold tracking-[0.4em] focus:outline-none"
+              style={{ borderColor: pinError ? "#dc2626" : undefined }}
+              placeholder="——————"
+            />
+
+            {pinError && (
+              <p className="mt-2 text-center text-sm font-medium text-red-600">
+                {pinError}
+              </p>
+            )}
+
+            <div className="mt-6 flex gap-3">
+              <button
+                onClick={() => setPinTarget(null)}
+                className="flex-1 rounded-2xl border border-gray-200 py-3.5 text-base font-semibold text-gray-700"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={submitPin}
+                disabled={pin.length < 4 || pinLoading}
+                className="flex flex-1 items-center justify-center gap-2 rounded-2xl py-3.5 text-base font-semibold text-white disabled:opacity-50"
+                style={{ backgroundColor: "var(--color-primary)" }}
+              >
+                {pinLoading && (
+                  <HugeiconsIcon
+                    icon={Loading03Icon}
+                    size={20}
+                    className="animate-spin"
+                  />
+                )}
+                {pinLoading ? "Checking..." : "Sign In"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Instructions */}
+      <div className="mb-5 flex items-start gap-3 rounded-2xl border border-gray-200 bg-white p-4">
+        <HugeiconsIcon
+          icon={InformationCircleIcon}
+          size={22}
+          className="mt-0.5 flex-shrink-0 text-gray-400"
+        />
+        <div className="text-xs leading-relaxed text-gray-600 sm:text-sm">
+          <p>
+            <strong className="text-gray-900">Signing in:</strong> Tap your
+            name, then enter your sign-in code when asked.
+          </p>
+          <p className="mt-1">
+            <strong className="text-gray-900">Signing out:</strong> Tap your
+            name again when you leave — no code needed. You can only sign in and
+            out once per day.
+          </p>
+        </div>
+      </div>
+
+      {/* Tabs */}
+      <div className="mb-5 flex gap-3">
         <button
-          onClick={handleToggle}
-          disabled={signInDisabled}
-          className="mt-5 flex w-full items-center justify-center gap-2 rounded-xl py-3.5 text-sm font-bold text-white shadow-sm transition-transform active:scale-[0.98] disabled:opacity-50 disabled:active:scale-100"
+          onClick={() => setTab("student")}
+          className="flex-1 rounded-2xl py-4 text-lg font-bold transition-colors"
           style={{
-            backgroundColor: attendance.signedIn
-              ? "#dc2626"
-              : "var(--color-primary)",
+            backgroundColor:
+              tab === "student" ? "var(--color-primary)" : "#f3f4f6",
+            color: tab === "student" ? "#fff" : "#111",
           }}
         >
-          {actionLoading && (
-            <HugeiconsIcon
-              icon={Loading03Icon}
-              size={18}
-              className="animate-spin"
-            />
-          )}
-          {actionLoading
-            ? "Updating..."
-            : attendance.signedIn
-              ? "Tap to sign out"
-              : hasRecordToday
-                ? "Done for today"
-                : officeLocked
-                  ? "Office closed until 6:00 AM"
-                  : "Tap to sign in"}
+          Students
         </button>
-
-        {officeLocked && !attendance.signedIn && !hasRecordToday && (
-          <p className="mt-3 text-center text-xs text-slate-400">
-            Sign-in is closed overnight and reopens at 6:00 AM.
-          </p>
-        )}
-      </section>
-
-      {/* Guidance */}
-      <section className="rounded-2xl border border-slate-200 bg-white p-5">
-        <h3 className="text-xs font-bold uppercase tracking-wide text-slate-900">
-          How it works
-        </h3>
-        <ol className="mt-3 space-y-2 text-xs leading-relaxed text-slate-500">
-          <li>
-            1. Tap <strong className="text-slate-700">Sign in</strong> when you
-            arrive at the office.
-          </li>
-          <li>2. Your status updates immediately above.</li>
-          <li>
-            3. Tap <strong className="text-slate-700">Sign out</strong> before
-            you leave the office.
-          </li>
-        </ol>
-        <p className="mt-3 rounded-lg bg-amber-50 px-3 py-2 text-[11px] leading-relaxed text-amber-700">
-          <strong>NOTE: </strong> Only sign in and out when you&apos;re actually
-          entering or leaving the office as you can only do each once per day.
-        </p>
-        {userGroup && (
-          <p className="mt-4 border-t border-slate-100 pt-3 text-xs text-slate-400">
-            {isStaff ? "Department" : "Class"}:{" "}
-            <span className="font-medium text-slate-600">{userGroup}</span>
-          </p>
-        )}
-      </section>
-    </main>
-  );
-}
-
-function TimeStat({ label, value }: { label: string; value?: string }) {
-  return (
-    <div className="rounded-xl bg-white/70 p-3">
-      <p className="text-[11px] font-medium text-slate-400">{label}</p>
-      <p className="mt-0.5 text-sm font-bold text-slate-800">
-        {value
-          ? new Date(value).toLocaleTimeString([], {
-              hour: "2-digit",
-              minute: "2-digit",
-            })
-          : "—"}
-      </p>
-    </div>
-  );
-}
-
-function Modal({
-  children,
-  onClose,
-}: {
-  children: React.ReactNode;
-  onClose: () => void;
-}) {
-  return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 px-4"
-      onClick={onClose}
-    >
-      <div
-        className="w-full max-w-sm rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl"
-        onClick={(e) => e.stopPropagation()}
-      >
-        {children}
+        <button
+          onClick={() => setTab("staff")}
+          className="flex-1 rounded-2xl py-4 text-lg font-bold transition-colors"
+          style={{
+            backgroundColor:
+              tab === "staff" ? "var(--color-primary)" : "#f3f4f6",
+            color: tab === "staff" ? "#fff" : "#111",
+          }}
+        >
+          Staff
+        </button>
       </div>
-    </div>
-  );
-}
 
-function DashboardSkeleton() {
-  return (
-    <main className="max-w-md mx-auto w-full p-4 sm:p-6 space-y-5 animate-pulse">
-      <div className="flex items-center justify-between rounded-2xl bg-white p-4 shadow-sm">
-        <div className="flex items-center gap-3">
-          <div className="h-11 w-11 rounded-xl bg-slate-200" />
-          <div className="space-y-2">
-            <div className="h-3.5 w-28 rounded bg-slate-200" />
-            <div className="h-3 w-36 rounded bg-slate-100" />
-          </div>
+      {/* Toast */}
+      <div className="mb-3 h-6 text-center">
+        {message && (
+          <p
+            className={`text-sm font-semibold ${isError ? "text-red-600" : "text-green-600"}`}
+          >
+            {message}
+          </p>
+        )}
+      </div>
+
+      {/* Grid — capped height, scrolls internally instead of growing the page */}
+      <div className="max-h-[65vh] overflow-y-auto rounded-2xl border border-gray-200 bg-white p-4 sm:p-5">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
+          {filtered.map((person) => {
+            const record = records[person._id];
+            const signedIn = !!record && !record.signOutTime;
+            const done = !!record && !!record.signOutTime;
+
+            return (
+              <button
+                key={person._id}
+                onClick={() => openTap(person)}
+                disabled={done}
+                className={`relative flex flex-col items-center gap-2 rounded-xl border p-4 text-center transition-transform active:scale-95 ${
+                  done
+                    ? "cursor-not-allowed border-gray-200 bg-white opacity-50"
+                    : "border-gray-200 bg-white hover:border-gray-300 hover:shadow-sm"
+                }`}
+              >
+                <span
+                  className="absolute right-2.5 top-2.5 h-2.5 w-2.5 rounded-full"
+                  style={{
+                    backgroundColor: signedIn
+                      ? "#22c55e"
+                      : done
+                        ? "#9ca3af"
+                        : "transparent",
+                  }}
+                />
+                <div
+                  className="flex h-12 w-12 items-center justify-center rounded-full text-sm font-bold text-white"
+                  style={{ backgroundColor: "var(--color-primary)" }}
+                >
+                  {initials(person.name)}
+                </div>
+                <span className="text-sm font-semibold leading-tight text-gray-900">
+                  {person.name}
+                </span>
+                <span className="text-[11px] text-gray-400">
+                  {done
+                    ? "Signed out"
+                    : signedIn
+                      ? "Tap to sign out"
+                      : "Tap to sign in"}
+                </span>
+              </button>
+            );
+          })}
+
+          {filtered.length === 0 && (
+            <p className="col-span-full py-12 text-center text-sm text-gray-400">
+              No one added yet — ask an admin to add people.
+            </p>
+          )}
         </div>
-        <div className="h-8 w-16 rounded-lg bg-slate-100" />
       </div>
-      <div className="h-56 rounded-2xl bg-slate-100" />
-      <div className="h-32 rounded-2xl bg-slate-100" />
     </main>
   );
 }

@@ -1,55 +1,29 @@
-import bcrypt from "bcryptjs";
-import Person from "@/models/Person";
 import { connectDB } from "@/lib/db";
+import Person from "@/models/Person";
+import { generateUniqueCode } from "@/lib/generateCode";
+import { NextRequest } from "next/server";
 
-export async function POST(req: Request) {
-  try {
-    await connectDB();
+// GET /api/people
+export async function GET() {
+  await connectDB();
+  const people = await Person.find().sort({ name: 1 });
+  return Response.json(people);
+}
 
-    const { name, email, password, gender, role, group } = await req.json();
+// POST — admin adds a person directly, code is generated server-side
+export async function POST(request: NextRequest) {
+  await connectDB();
+  const { name, role, group } = await request.json();
 
-    const normalizedEmail = String(email).trim().toLowerCase();
-    const trimmedGroup = String(group || "").trim();
-
-    if (String(role).toLowerCase() === "student" && !trimmedGroup) {
-      return Response.json(
-        { error: "Class or department is required for students." },
-        { status: 400 },
-      );
-    }
-
-    const existingPerson = await Person.findOne({ email: normalizedEmail });
-
-    if (existingPerson) {
-      return Response.json(
-        { error: "Email already registered" },
-        { status: 400 },
-      );
-    }
-
-    const hashedPassword = await bcrypt.hash(String(password), 10);
-
-    const newPerson = await Person.create({
-      name: String(name).trim(),
-      email: normalizedEmail,
-      password: hashedPassword,
-      gender,
-      role,
-      group: trimmedGroup,
-      status: "approved",
-    });
-
-    return Response.json(newPerson, { status: 201 });
-  } catch (error: unknown) {
-    const message =
-      error instanceof Error ? error.message : "Registration failed";
-
+  if (!name || !role) {
     return Response.json(
-      {
-        error: "Unable to connect to the database. Please try again later.",
-        details: message,
-      },
-      { status: 500 },
+      { error: "Name and role are required" },
+      { status: 400 },
     );
   }
+
+  const code = await generateUniqueCode();
+
+  const person = await Person.create({ name, role, group, code });
+  return Response.json(person, { status: 201 });
 }
