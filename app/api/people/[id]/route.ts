@@ -1,27 +1,30 @@
 import { connectDB } from "@/lib/db";
 import Person from "@/models/Person";
+import AttendanceRecord from "@/models/AttendanceRecord";
 import { NextRequest } from "next/server";
 
 interface Params {
   params: Promise<{ id: string }>;
 }
 
-// PATCH { status: "approved" | "rejected" }
-export async function PATCH(request: NextRequest, { params }: Params) {
-  const { id } = await params;
+export async function DELETE(request: NextRequest, { params }: Params) {
+  try {
+    await connectDB();
+    const { id } = await params;
 
-  await connectDB();
-  const { status } = await request.json();
+    const person = await Person.findByIdAndDelete(id);
+    if (!person) {
+      return Response.json({ error: "Person not found" }, { status: 404 });
+    }
 
-  if (!["approved", "rejected"].includes(status)) {
-    return Response.json({ error: "Invalid status" }, { status: 400 });
+    await AttendanceRecord.deleteMany({ person: id });
+
+    return Response.json({ success: true });
+  } catch (err: any) {
+    console.error("Failed to delete person:", err);
+    return Response.json(
+      { error: err?.message || "Failed to delete person." },
+      { status: 500 },
+    );
   }
-
-  const person = await Person.findByIdAndUpdate(id, { status }, { new: true });
-
-  if (!person) {
-    return Response.json({ error: "Person not found" }, { status: 404 });
-  }
-
-  return Response.json(person);
 }

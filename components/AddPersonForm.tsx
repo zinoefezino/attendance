@@ -77,7 +77,7 @@ export default function AddPersonForm({ onAdded }: { onAdded: () => void }) {
             disabled={loading}
             value={name}
             onChange={(e) => setName(e.target.value)}
-            className="w-full rounded-xl border border-gray-200 px-4 py-2.5 text-sm disabled:opacity-60"
+            className="w-full rounded-xl border border-gray-200 px-4 py-2.5 text-base disabled:opacity-60"
           />
           <div className="grid grid-cols-2 gap-3">
             <select
